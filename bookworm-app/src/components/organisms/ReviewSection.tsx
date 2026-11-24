@@ -1,24 +1,35 @@
 import { useState } from 'react';
-import { Button, StarRating } from '../atoms';
+import { ArrowRight } from '@carbon/icons-react';
+import { Button, Notice, StarRating } from '../atoms';
 import { ReviewCard } from '../molecules';
+import { MAX_REVIEW_LENGTH, errorMessage } from '../../services';
 import type { Review } from '../../types';
 
 interface ReviewSectionProps {
   reviews: Review[];
-  onSubmit: (text: string, rating: number) => void;
+  /** Rejects with an ApiError when the review is refused (guest, invalid text, ...). */
+  onSubmit: (text: string, rating: number) => Promise<void>;
 }
 
 export function ReviewSection({ reviews, onSubmit }: ReviewSectionProps) {
   const [text, setText] = useState('');
   const [rating, setRating] = useState(0);
-  const MAX = 100;
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (text.trim() && rating > 0) {
-      onSubmit(text.trim(), rating);
+    if (!text.trim() || rating === 0) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onSubmit(text.trim(), rating);
       setText('');
       setRating(0);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -28,23 +39,30 @@ export function ReviewSection({ reviews, onSubmit }: ReviewSectionProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Write a review */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-3">
           <div className="flex justify-between text-xs text-muted">
             <span>Leave Your Review</span>
-            <span>{text.length}/{MAX}</span>
+            <span>{text.length}/{MAX_REVIEW_LENGTH}</span>
           </div>
           <textarea
             value={text}
-            onChange={(e) => setText(e.target.value.slice(0, MAX))}
+            onChange={(e) => setText(e.target.value.slice(0, MAX_REVIEW_LENGTH))}
             placeholder="Placeholder text"
             rows={6}
-            className="w-full bg-surface-overlay border border-border px-3 py-2 text-sm text-white
-                       placeholder-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent-blue transition"
+            aria-label="Leave Your Review"
+            className="input-base resize-none"
           />
+          {error && <Notice kind="error">{error}</Notice>}
           <div className="flex items-center justify-between">
             <StarRating rating={rating} interactive onChange={setRating} size={20} />
-            <Button type="submit" variant="primary" size="md" icon={<ArrowIcon />} disabled={!text.trim() || rating === 0}>
-              Submit
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              icon={<ArrowRight size={16} />}
+              disabled={submitting || !text.trim() || rating === 0}
+            >
+              {submitting ? 'Submitting…' : 'Submit'}
             </Button>
           </div>
         </form>
@@ -57,13 +75,5 @@ export function ReviewSection({ reviews, onSubmit }: ReviewSectionProps) {
         </div>
       </div>
     </section>
-  );
-}
-
-function ArrowIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }

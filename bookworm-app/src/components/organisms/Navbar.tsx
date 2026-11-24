@@ -2,7 +2,9 @@ import { Link, NavLink } from 'react-router-dom';
 import { Catalog, ShoppingCart, UserAvatar, Menu, Close } from '@carbon/icons-react';
 import { useState } from 'react';
 import { Badge } from '../atoms';
-import { useCart } from '../../context/CartContext';
+import { useCart } from '../../context/cart';
+import { useSession } from '../../context/session';
+import { formatMoney } from '../../lib/money';
 import clsx from 'clsx';
 
 const NAV_LINKS = [
@@ -13,7 +15,20 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const { totalItems } = useCart();
+  const { user, personas, switchPersona, resetDemo } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [switching, setSwitching] = useState(false);
+
+  const handleSwitch = async (userId: string) => {
+    setSwitching(true);
+    try {
+      await switchPersona(userId);
+      setAccountOpen(false);
+    } finally {
+      setSwitching(false);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-surface border-b border-border">
@@ -51,9 +66,62 @@ export function Navbar() {
             <ShoppingCart size={20} />
             <Badge count={totalItems} />
           </Link>
-          <button className="text-muted hover:text-white transition-colors" aria-label="Account">
-            <UserAvatar size={20} />
-          </button>
+
+          {/* Persona switcher (stands in for login / logout) */}
+          <div className="relative">
+            <button
+              className="flex items-center gap-2 text-muted hover:text-white transition-colors"
+              aria-label="Account"
+              aria-expanded={accountOpen}
+              onClick={() => setAccountOpen((o) => !o)}
+            >
+              <UserAvatar size={20} />
+              <span className="hidden md:inline text-sm">{user.name}</span>
+            </button>
+            {accountOpen && (
+              <div className="absolute right-0 top-full mt-3 w-72 bg-surface-raised border border-border z-50">
+                <div className="px-4 py-3 border-b border-border">
+                  <p className="text-sm font-semibold text-white">{user.name}</p>
+                  <p className="text-xs text-muted">
+                    {user.role === 'GUEST'
+                      ? 'Browsing as guest'
+                      : `Wallet ${formatMoney(user.walletBalance)} · ${user.giftPoints} gift points`}
+                  </p>
+                </div>
+                <p className="px-4 pt-3 text-xs text-helper">Switch persona</p>
+                <ul>
+                  {personas.map((p) => (
+                    <li key={p.id}>
+                      <button
+                        disabled={switching}
+                        onClick={() => void handleSwitch(p.id)}
+                        className={clsx(
+                          'w-full text-left px-4 py-3 text-sm border-l-[3px] transition-colors disabled:opacity-50',
+                          p.id === user.id
+                            ? 'border-accent-blue bg-surface-overlay text-white'
+                            : 'border-transparent text-muted hover:bg-surface-overlay hover:text-white'
+                        )}
+                      >
+                        {p.name}
+                        <span className="block text-xs text-helper">{p.role === 'GUEST' ? 'Guest' : p.email}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  disabled={switching}
+                  onClick={() => {
+                    setAccountOpen(false);
+                    void resetDemo();
+                  }}
+                  className="w-full text-left px-4 py-3 text-xs text-link hover:bg-surface-overlay border-t border-border"
+                >
+                  Reset demo data
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Mobile hamburger */}
           <button
             className="sm:hidden text-muted hover:text-white transition-colors"

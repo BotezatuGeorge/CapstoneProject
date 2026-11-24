@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PageLayout, CartTemplate } from '../components/templates';
-import { useCart } from '../context/CartContext';
-import type { AddressFormData } from '../types';
+import { PageLayout, PageMessage, CartTemplate } from '../components/templates';
+import { useCart } from '../context/cart';
+import { useSession } from '../context/session';
+import { cartService, errorMessage, fieldErrorsOf } from '../services';
+import type { Address, AddressFormData } from '../types';
 
-const DEFAULT_ADDRESS: AddressFormData = {
+const EMPTY_ADDRESS: AddressFormData = {
   firstName: '',
   lastName: '',
   addressLine: '',
@@ -19,22 +21,71 @@ const DEFAULT_ADDRESS: AddressFormData = {
 };
 
 export function CartPage() {
-  const { items, updateQuantity } = useCart();
+  const { items, loaded, setQuantity, removeFromCart } = useCart();
+  const { user } = useSession();
   const navigate = useNavigate();
-  const [address, setAddress] = useState<AddressFormData>(DEFAULT_ADDRESS);
+  const [address, setAddress] = useState<AddressFormData>(EMPTY_ADDRESS);
+  const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [checkingOut, setCheckingOut] = useState(false);
 
-  const handlePayNow = () => {
-    navigate('/payment');
+  const handleAddressChange = (next: AddressFormData) => {
+    if (next.useSaved && !address.useSaved && user.savedAddress) {
+      setAddress({ ...user.savedAddress, useSaved: true });
+    } else if (!next.useSaved && address.useSaved) {
+      setAddress({ ...EMPTY_ADDRESS });
+    } else {
+      setAddress(next);
+    }
+    setAddressErrors({});
   };
+
+  const guard = async (action: Promise<unknown>) => {
+    setError(null);
+    try {
+      await action;
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  };
+
+  const handlePayNow = async () => {
+    setCheckingOut(true);
+    setError(null);
+    setAddressErrors({});
+    try {
+      const { useSaved: _useSaved, ...details } = address;
+      await cartService.saveDeliveryAddress(details as Address);
+      navigate('/payment');
+    } catch (err) {
+      setAddressErrors(fieldErrorsOf(err));
+      setError(errorMessage(err));
+    } finally {
+      setCheckingOut(false);
+    }
+  };
+
+  if (!loaded) {
+    return (
+      <PageLayout>
+        <PageMessage loading>Loading your cart…</PageMessage>
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout>
       <CartTemplate
         items={items}
-        onQuantityChange={updateQuantity}
+        onQuantityChange={(bookId, qty) => void guard(setQuantity(bookId, qty))}
+        onRemove={(bookId) => void guard(removeFromCart(bookId))}
         address={address}
-        onAddressChange={setAddress}
-        onPayNow={handlePayNow}
+        onAddressChange={handleAddressChange}
+        addressErrors={addressErrors}
+        hasSavedAddress={user.savedAddress !== null}
+        error={error}
+        checkingOut={checkingOut}
+        onPayNow={() => void handlePayNow()}
       />
     </PageLayout>
   );

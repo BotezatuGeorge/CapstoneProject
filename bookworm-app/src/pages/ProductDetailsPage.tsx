@@ -1,43 +1,74 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useState } from 'react';
-import { PageLayout } from '../components/templates';
-import { ProductTemplate } from '../components/templates';
-import { books, authors, reviews as defaultReviews } from '../data';
-import { useCart } from '../context/CartContext';
-import type { Review } from '../types';
+import { PageLayout, PageMessage, ProductTemplate } from '../components/templates';
+import { useCart } from '../context/cart';
+import { useSession } from '../context/session';
+import { useAsync } from '../hooks/useAsync';
+import { catalogService, errorMessage, reviewService, wishlistService } from '../services';
+
+interface Feedback {
+  kind: 'error' | 'success';
+  message: string;
+}
 
 export function ProductDetailsPage() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const { id = '' } = useParams<{ id: string }>();
   const { addToCart } = useCart();
-  const [reviews, setReviews] = useState<Review[]>(defaultReviews);
+  const { user } = useSession();
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
 
-  const book = books.find((b) => b.id === id);
-  if (!book) {
+  const detail = useAsync(() => catalogService.getBookDetail(id), [id, user.id]);
+  const wishlist = useAsync(() => wishlistService.ids(), [user.id]);
+
+  if (detail.loading && !detail.data) {
     return (
       <PageLayout>
-        <div className="py-20 text-center text-muted">Book not found.</div>
+        <PageMessage loading>Loading book…</PageMessage>
+      </PageLayout>
+    );
+  }
+  if (!detail.data) {
+    return (
+      <PageLayout>
+        <PageMessage>{detail.error ? errorMessage(detail.error) : 'Book not found.'}</PageMessage>
       </PageLayout>
     );
   }
 
-  const author = authors.find((a) => a.id === book.authorId);
-  const relatedBooks = books.filter((b) => b.id !== book.id).slice(0, 3);
+  const { book, author, reviews, related } = detail.data;
 
-  const handleAddToCart = () => {
-    addToCart(book);
-    navigate('/cart');
+  const handleAddToCart = async () => {
+    setBusy(true);
+    setFeedback(null);
+    try {
+      await addToCart(book.id);
+      setFeedback({ kind: 'success', message: `Added “${book.title}” to your cart` });
+    } catch (error) {
+      setFeedback({ kind: 'error', message: errorMessage(error) });
+      detail.reload();
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleSubmitReview = (text: string, rating: number) => {
-    const newReview: Review = {
-      id: String(Date.now()),
-      author: 'You',
-      text,
-      rating,
-      date: new Date().toISOString().slice(0, 10),
-    };
-    setReviews((prev) => [newReview, ...prev]);
+  const handleToggleWishlist = async () => {
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const added = await wishlistService.toggle(book.id);
+      wishlist.reload();
+      setFeedback({ kind: 'success', message: added ? 'Added to your wishlist' : 'Removed from your wishlist' });
+    } catch (error) {
+      setFeedback({ kind: 'error', message: errorMessage(error) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSubmitReview = async (text: string, rating: number) => {
+    await reviewService.submit(book.id, text, rating);
+    detail.reload();
   };
 
   return (
@@ -45,10 +76,13 @@ export function ProductDetailsPage() {
       <ProductTemplate
         book={book}
         author={author}
-        relatedBooks={relatedBooks}
+        relatedBooks={related}
         reviews={reviews}
-        onAddToCart={handleAddToCart}
-        onAddToWishlist={() => {}}
+        inWishlist={wishlist.data?.includes(book.id) ?? false}
+        busy={busy}
+        feedback={feedback}
+        onAddToCart={() => void handleAddToCart()}
+        onToggleWishlist={() => void handleToggleWishlist()}
         onSubmitReview={handleSubmitReview}
       />
     </PageLayout>

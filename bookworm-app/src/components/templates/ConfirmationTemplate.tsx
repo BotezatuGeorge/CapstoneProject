@@ -1,47 +1,23 @@
 import { CheckmarkFilled, Catalog } from '@carbon/icons-react';
-import { Button } from '../atoms';
+import { Button, BookArt } from '../atoms';
 import { RelatedBookCard } from '../molecules';
-import type { CartItem } from '../../types';
+import { formatMoney } from '../../lib/money';
+import type { OrderView } from '../../types';
 
 interface ConfirmationTemplateProps {
-  items: CartItem[];
+  order: OrderView;
   onContinueShopping: () => void;
+  onViewOrders: () => void;
 }
 
-export function ConfirmationTemplate({ items, onContinueShopping }: ConfirmationTemplateProps) {
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleString('en-US', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+export function ConfirmationTemplate({ order, onContinueShopping, onViewOrders }: ConfirmationTemplateProps) {
   return (
     <div className="relative min-h-screen">
-      {/* Background */}
-      <div
-        className="absolute inset-0 z-0"
-        style={{
-          background: 'linear-gradient(135deg, #0d2137 0%, #1a3a5c 50%, #0d2137 100%)',
-        }}
-      >
-        <img
-          src="https://picsum.photos/seed/book1/300/300"
-          alt=""
-          aria-hidden="true"
-          className="absolute top-8 left-16 w-40 h-48 object-cover opacity-70 rotate-[-15deg]"
-        />
-        <img
-          src="https://picsum.photos/seed/book2/200/280"
-          alt=""
-          aria-hidden="true"
-          className="absolute bottom-16 left-24 w-32 h-44 object-cover opacity-70 rotate-[8deg]"
-        />
-        <img
-          src="https://picsum.photos/seed/book3/180/260"
-          alt=""
-          aria-hidden="true"
-          className="absolute bottom-20 right-1/3 w-32 h-44 object-cover opacity-70 rotate-[-5deg]"
-        />
-        <img
-          src="https://picsum.photos/seed/book4/200/300"
-          alt=""
-          aria-hidden="true"
-          className="absolute top-12 right-16 w-16 h-40 object-cover opacity-70"
-        />
+      <div className="absolute inset-0 z-0">
+        <BookArt variant="backdrop" />
       </div>
 
       {/* Confirmation card */}
@@ -56,19 +32,29 @@ export function ConfirmationTemplate({ items, onContinueShopping }: Confirmation
 
           {/* Purchased items */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
-            {items.map((item) => (
+            {order.items.map((item) => (
               <RelatedBookCard key={item.book.id} book={item.book} />
             ))}
           </div>
 
-          <Button
-            variant="primary"
-            size="md"
-            onClick={onContinueShopping}
-            icon={<GridIcon />}
-          >
-            Continue your Shopping
-          </Button>
+          {/* Order receipt */}
+          <dl className="w-full bg-surface-overlay p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            <div className="flex justify-between gap-4"><dt className="text-muted">Order</dt><dd className="text-white">{order.id}</dd></div>
+            <div className="flex justify-between gap-4"><dt className="text-muted">Total paid</dt><dd className="text-white font-semibold">{formatMoney(order.totalAmount)}</dd></div>
+            <div className="flex justify-between gap-4"><dt className="text-muted">Payment ref</dt><dd className="text-white">{order.payment.transactionRef}</dd></div>
+            <div className="flex justify-between gap-4"><dt className="text-muted">Gift points earned</dt><dd className="text-white">+{order.pointsEarned}</dd></div>
+            <div className="flex justify-between gap-4"><dt className="text-muted">Tracking</dt><dd className="text-white">{order.shipment.trackingNumber}</dd></div>
+            <div className="flex justify-between gap-4"><dt className="text-muted">Free cancellation until</dt><dd className="text-white">{formatDate(order.cancellationDeadline)}</dd></div>
+          </dl>
+
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button variant="primary" size="md" onClick={onContinueShopping} icon={<GridIcon />}>
+              Continue your Shopping
+            </Button>
+            <Button variant="secondary" size="md" onClick={onViewOrders}>
+              View my orders
+            </Button>
+          </div>
         </div>
       </div>
     </div>

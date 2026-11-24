@@ -22,8 +22,7 @@ export function FilterDropdown({
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none bg-surface-overlay border border-border px-3 py-2 text-sm text-white
-                     focus:outline-none focus:ring-1 focus:ring-accent-blue transition pr-8 cursor-pointer"
+          className="input-base appearance-none pr-8 cursor-pointer"
         >
           {options.map((opt) => (
             <option key={opt} value={opt}>

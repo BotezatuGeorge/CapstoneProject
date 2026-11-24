@@ -1,7 +1,9 @@
 # Online Bookstore Platform — Architecture & Implementation Plan
 
 ## 1. Project Overview & Objectives
-An enterprise-grade e-commerce bookstore platform ("**Book Worm**") designed to deliver seamless customer journeys for both **Guest Users** and **Registered Members**, backed by 6 modular core subsystems: **Member**, **Store**, **Catalog**, **Order**, **Payment**, and **Shipping**.
+An e-commerce bookstore platform ("**Book Worm**") designed to deliver seamless customer journeys for both **Guest Users** and **Registered Members**, modelled as 6 modular core subsystems: **Member**, **Store**, **Catalog**, **Order**, **Payment**, and **Shipping**.
+
+> **Architecture decision: frontend-only, everything mocked.** There is no backend, database, or API server. The six subsystems are implemented as typed, async mock services in the Vite + React SPA (`src/services`), backed by TypeScript fixtures (`src/data`) and `localStorage` for mutable state (cart, wishlist, orders, personas). Services return Promises with simulated latency and keep the same shape a real API would, so a backend can replace them later without UI changes. Sections that mention "server", "database" or "API" below describe the behaviour of these mock services.
 
 ---
 
@@ -89,8 +91,8 @@ graph TD
 ## 3. Subsystem Breakdown & Capability Matrix
 
 ### 1. Member Subsystem
-- **Guest / Registered Users**: Anonymous guest cart and checkout vs. persistent authenticated customer profiles saved in PostgreSQL.
-- **Login & Logout**: Secure JWT-based session management, simplified for the demo using a **UI Persona Switcher** (allows hot-swapping between pre-seeded DB profiles without real-world OAuth or password resets).
+- **Guest / Registered Users**: Anonymous guest cart and checkout vs. pre-seeded customer profiles from mock fixtures, persisted in the browser (`localStorage`).
+- **Login & Logout**: No real authentication. Session state is simulated with a **UI Persona Switcher** (allows hot-swapping between pre-seeded mock profiles without OAuth, JWT, or password resets).
 - **Role & Entitlement**: Role-Based Access Control (`GUEST`, `CUSTOMER`, `STORE_ADMIN`, `SYSTEM_ADMIN`) and catalog access entitlements (e.g., VIP discounts, member-only catalogues).
 
 ### 2. Store Subsystem
@@ -115,14 +117,14 @@ graph TD
 - **Redeem Gift Points & Coupons**: Applying coupon promo codes and redeeming loyalty gift points against the order total.
 
 ### 5. Payment Subsystem (Simulated Gateway)
-- **Payment Processing using Gateway**: Server-side simulated API gateway validating card parameters (checksums, CVV, dates), UPI formats, or store wallet balances, returning instant status codes and recording transactions in PostgreSQL.
-- **Refund Processing**: Automated refund transaction updates in the database when an order is cancelled within 48 hours or when a return is requested.
+- **Payment Processing using Gateway**: Client-side mock gateway service validating card parameters (checksums, CVV, dates), UPI formats, or store wallet balances, returning instant status codes after a simulated delay and recording transactions in the mock store.
+- **Refund Processing**: Automated refund transaction updates in the mock store when an order is cancelled within 48 hours or when a return is requested.
 - **Payment Confirmation**: Secure, immediate payment receipt settlement generation.
-- **Gift & Wallet**: Customer wallet balance and gift points ledger ledger management saved in PostgreSQL.
+- **Gift & Wallet**: Customer wallet balance and gift points ledger management kept in the mock store.
 
 ### 6. Shipping Subsystem (Rule-Based Engine)
-- **Shipping Rate Calculation**: Deterministic shipping cost calculation based on simple rules (e.g., Standard = Free / Express = ₹50) instead of complex carrier API integrations.
-- **Approximate Delivery Time (Tentative Delivery Date)**: Dynamic calculation of estimated delivery dates in the backend relative to current server time (e.g., Standard = `now + 3 days` / Express = `now + 1 day`) displayed on PDP and checkout.
+- **Shipping Rate Calculation**: Deterministic shipping cost calculation based on simple rules (e.g., Standard = Free / Express = $5) instead of complex carrier API integrations.
+- **Approximate Delivery Time (Tentative Delivery Date)**: Dynamic calculation of estimated delivery dates in the shipping mock service relative to the current browser time (e.g., Standard = `now + 3 days` / Express = `now + 1 day`) displayed on PDP and checkout.
 - **Return Shipment**: Return receipt registration and reverse logistics status tracking.
 
 ---
@@ -166,7 +168,7 @@ Vertical active navigation:
     - **Publisher/Brand**: `Published by: ABC Publishers` (clickable brand filter).
     - **Format Badge**: `Paperback` / `Hardcover` / `eBook`.
     - **Category Tags**: `Non-fiction`, `Self Help`.
-    - **Price**: Localized currency (e.g. `₹149`).
+    - **Price**: US dollars (e.g. `$12.99`). The mockups show ₹ amounts, but the app uses USD; format with `formatMoney` from `src/lib/money.ts`.
     - **Delivery ETA**: Real-time shipping calculation (e.g. `Delivery by Mon, 21 Jul`).
     - **Action Buttons**:
       * **"Add to Cart"** (Primary blue button with basket icon).
@@ -232,7 +234,7 @@ Vertical active navigation:
 - **Primary Action**: Centered blue **"Continue your Shopping"** CTA (returns user to Home / Catalogue).
 - **Post-Purchase State Automation**:
   - Shopping cart automatically cleared.
-  - Order saved to database with state `CONFIRMED`.
+  - Order saved to the mock store (`localStorage`) with state `CONFIRMED`.
   - 48-Hour cancellation window initialized (`cancellationDeadline = placedAt + 48 hours`).
 
 ---
@@ -241,21 +243,19 @@ Vertical active navigation:
 
 | Layer / Component | Technology Choice | Details & Implementation Notes |
 |---|---|---|
-| **Database** | **PostgreSQL** | Relational data persistence with ACID transactions for orders, inventory, and points |
-| **ORM / Data Access** | **Prisma / Drizzle ORM** | Type-safe migrations, relations, and seed scripts |
+| **Data Layer** | **Mock fixtures (`src/data`) + `localStorage`** | No database or backend. Seed data (books, authors, reviews, personas, coupons) lives in TypeScript fixtures; mutable state (cart, wishlist, orders) persists in the browser |
+| **Service Layer** | **Typed async mock services (`src/services`)** | One module per subsystem (member, store, catalog, order, payment, shipping) returning Promises with simulated latency, so a real API can replace them later without UI changes |
 | **AI Augmentation on UI** | **IBM BOB (or AWS KIRO)** | Vibe coding with rapid prototyping of pixel-perfect Tailwind/React components based on wireframes |
-| **Data Model Design** | **Manual + AI-Assisted** | Relational schema mapped directly from UI wireframes and business constraints |
-| **API Specification** | **OpenAPI 3.0 (Swagger)** | Auto-generated OpenAPI JSON/YAML specs with Swagger UI documentation |
-| **AI Augmented Backend Services** | **IBM BOB (or AWS KIRO)** | Generation of type-safe RESTful API endpoints and business logic across 6 subsystems |
+| **Data Model Design** | **Manual + AI-Assisted** | Domain model mapped from UI wireframes and business constraints, expressed as TypeScript types in `src/types` |
 | **AI Augmented Test Case Generator** | **ICA Agents** | AI agent-driven testing: *Test Scenario Generator*, *API Testcase Generator*, *React Component Test Generator* |
-| **Frontend Framework** | **Vite + React SPA** | TypeScript + IBM Carbon Design System (`@carbon/react`) + `@carbon/icons-react` + Tailwind CSS (utility/layout helper classes) + Zustand + Client-side Routing |
-| **Local Deployment** | **Docker & Docker Compose** | Multi-container setup (`frontend`, `backend-api`, `postgres`) for one-click local runs |
-| **Cloud Deployment** | **AWS ROSA / IBM ROKS** | Containerized microservices deployed to Red Hat OpenShift on AWS (ROSA) or IBM Cloud (ROKS) |
+| **Frontend Framework** | **Vite + React SPA** | TypeScript + IBM Carbon look (g100 tokens and IBM Plex configured in `tailwind.config.js`, square corners) + `@carbon/icons-react` + Tailwind CSS + React Context for session/cart state + `react-router-dom` |
+| **Local Run** | **`npm run dev`** | Single process, no containers or external services required |
+| **Hosting (optional)** | **Static bundle (`dist/`)** | Any static host; optionally an nginx container on AWS ROSA / IBM ROKS for a cloud demo |
 | **Version Control & Collaboration** | **GitHub PR Workflow** | Feature branch development with Pull Requests submitted to personal GitHub with access granted to Manager |
 
 ---
 
-## 6. Domain Data Model (Database Schema Overview)
+## 6. Domain Data Model (TypeScript Entities & Mock Fixtures)
 
 ```mermaid
 erDiagram
@@ -361,16 +361,18 @@ erDiagram
 
 ## 7. Step-by-Step Implementation Roadmap
 
-### Phase 1: Foundation, PostgreSQL & Subsystem Scaffolding
-- [ ] Initialize project structure (Vite + React SPA Frontend & Express/Node.js API Backend).
-- [ ] Configure PostgreSQL database connection and Docker Compose environment (`docker-compose.yml`).
-- [ ] Configure Dark Mode design tokens, Tailwind CSS, and `@carbon/icons-react` via vibe coding.
-- [ ] Set up PostgreSQL Prisma / Drizzle schema with manual domain modeling based on wireframes.
-- [ ] Configure OpenAPI 3.0 (Swagger) spec generation tooling.
-- [ ] Configure Member subsystem: Auth, Guest session handling, and Role/Entitlements.
+### Phase 1: Foundation, Mock Data Layer & Subsystem Scaffolding
+- [x] Initialize project structure (Vite + React SPA, frontend only).
+- [x] Configure Dark Mode design tokens, Tailwind CSS, and `@carbon/icons-react`.
+- [x] Model the domain as TypeScript types in `src/types` based on wireframes (see Section 6).
+- [x] Create the mock service layer in `src/services` (one module per subsystem, async, typed).
+- [x] Configure Member subsystem mock: Persona Switcher, Guest session handling, and Role/Entitlements.
+
+> **Implementation layout:** fixtures in `src/data`; Promise-returning services (`ApiError` on failure, simulated latency, `localStorage` persistence) in `src/services`; `SessionProvider` / `CartProvider` in `src/context`; `useAsync` in `src/hooks`.
+> **Demo values (currency: USD):** personas `guest`, `aarav` (wallet $100, 320 points, seeded orders), `priya` (wallet $5); coupons `BOOKWORM10` ($10 off, min $30), `WELCOME10` (10%), `READ5` ($5 off, min $20); card numbers are not validated (any number is approved; one ending in `0002` is declined), UPI ids starting with `fail` declined; `lost-kitten` has stock 3. Gift points: 1 per $10 spent. Adding to cart keeps the user on the current page and shows a success notice.
 
 ### Phase 2: Store & Catalog Subsystems (Discovery & Recommendations)
-- [ ] Seed PostgreSQL catalog with books shown in design (e.g., *Joy of Minimalism*, *The Art of Focus*, *The Art of Learning*, *The Path to Success*, etc.) and authors (e.g. Daniel Reed, Arjun Patel, Raj Patel, James Wright).
+- [ ] Seed mock catalog fixtures (`src/data`) with books shown in design (e.g., *Joy of Minimalism*, *The Art of Focus*, *The Art of Learning*, *The Path to Success*, etc.) and authors (e.g. Daniel Reed, Arjun Patel, Raj Patel, James Wright).
 - [ ] Implement Category Sidebar (20+ genres) and Filter Bar (Language, Format, Price Range, Sort).
 - [ ] Implement Home Sections: "Recommended for You", "Bestsellers this Month", and "New Launches".
 - [ ] Build Product Detail Page (PDP):
@@ -412,21 +414,20 @@ erDiagram
 ### Phase 6: AI-Augmented Testing (ICA Agents) & Verification
 - [ ] Generate comprehensive test scenarios using **ICA Test Scenario Generator**:
   - End-to-End user journeys: Guest / Registered browsing, checkout, points redemption, 48-hour cancellation.
-- [ ] Generate API tests using **ICA API Testcase Generator**:
-  - OpenAPI schema conformance tests for all 6 subsystems.
+- [ ] Generate service-layer tests using **ICA API Testcase Generator**:
+  - Contract tests that mock services for all 6 subsystems return data matching `src/types`.
   - Boundary and validation tests for payments, discounts, addresses, and order cancellation.
 - [ ] Generate React unit/component tests using **ICA Testcase Generator for React**:
   - PDP reviews, filter controls, cart stepper, and checkout modal interactions.
 - [ ] Execute test suites with 100% passing threshold before build approval.
 
-### Phase 7: Deployment (Local & Cloud: AWS ROSA / IBM ROKS) & PR Delivery
+### Phase 7: Build, Static Hosting & PR Delivery
 - [ ] **Local Machine Readiness**:
-  - Containerize application with Dockerfile and `docker-compose.up.yml`.
-  - Validate local startup with seeded PostgreSQL database.
-- [ ] **Cloud Deployment (AWS ROSA / IBM ROKS)**:
-  - Prepare Kubernetes / OpenShift manifests (`Deployment`, `Service`, `Route`/`Ingress`, `ConfigMap`, `Secret`).
-  - Deploy to AWS ROSA (Red Hat OpenShift on AWS) or IBM ROKS (Red Hat OpenShift on IBM Cloud).
-  - Validate cloud endpoints and health checks.
+  - `npm install && npm run dev` starts the app with seeded mock data; no other services required.
+  - `npm run build && npm run preview` validates the production bundle.
+- [ ] **Hosting (optional)**:
+  - Deploy the static `dist/` bundle to any static host (or an nginx container on AWS ROSA / IBM ROKS if a cloud demo is required).
+  - Validate the deployed URL loads all five pages and the cart → payment → confirmation flow.
 - [ ] **GitHub PR & Review Workflow**:
   - Push branch to personal GitHub repository.
   - Open a well-structured Pull Request (PR) with feature breakdown and screenshots.
@@ -438,12 +439,12 @@ erDiagram
 
 | Role / Agent / Tool | Specific Function in Project |
 |---|---|
-| **IBM BOB (or AWS KIRO)** | Primary AI augmented IDE assistant for vibe coding the UI, implementing backend services, creating OpenAPI specs, and managing Git/deployment workflows. |
+| **IBM BOB (or AWS KIRO)** | Primary AI augmented IDE assistant for vibe coding the UI, implementing the mock service layer and fixtures, and managing Git/build workflows. |
 | **ICA Test Scenario Generator** | AI agent generating complete functional test scenarios across customer journeys. |
-| **ICA API Testcase Generator** | AI agent generating automated API integration tests against the OpenAPI specifications. |
+| **ICA API Testcase Generator** | AI agent generating automated tests against the typed mock service contracts (`src/services`). |
 | **ICA React Testcase Generator** | AI agent generating component and interaction tests for React/Next.js UI components. |
 | **`create-chart`** | Visualizing order history analytics, sales trends, and loyalty points earning/spending charts. |
-| **Screenshot / Vision Analysis** | Converting UI mockups and architectural diagrams into pixel-perfect frontend components and backend workflows. |
+| **Screenshot / Vision Analysis** | Converting UI mockups and architectural diagrams into pixel-perfect frontend components and mock service workflows. |
 
 ---
 
@@ -457,13 +458,16 @@ erDiagram
 - **Batch 7 (Payment Screen Modal Slide)**: Complete Payment dialog, Credit/Debit/UPI/Wallet tabs, Card inputs, "Pay Now" action.
 - **Batch 8 (Purchase Confirmation Slide)**: Green checkmark, Success headline, purchased reads cards, "Continue your Shopping" button.
 - **Batch 9 (Tech Components, AI Agents, Deployment & PR Workflow)**:
-  - Database: PostgreSQL.
-  - AI augmentation on UI & Backend: Vibe coding with IBM BOB (or AWS KIRO).
-  - Data model design: Wireframe-based manual validation.
-  - OpenAPI / Swagger spec generation for all subsystems.
-  - AI test case generation: ICA Agents (Test Scenario Generator, API Testcase Generator, React Testcase Generator).
-  - Deployment: Local (Docker Compose) and Cloud (AWS ROSA / IBM ROKS).
+  - ~~Database: PostgreSQL~~ → superseded by Batch 10 (mock data in the frontend).
+  - AI augmentation on UI: Vibe coding with IBM BOB (or AWS KIRO).
+  - Data model design: Wireframe-based manual validation (now expressed as TypeScript types + mock fixtures).
+  - ~~OpenAPI / Swagger spec generation~~ → superseded by Batch 10 (typed mock service contracts).
+  - AI test case generation: ICA Agents (Test Scenario Generator, React Testcase Generator; the API Testcase Generator now targets the mock service layer).
+  - ~~Deployment: Local (Docker Compose) and Cloud (AWS ROSA / IBM ROKS)~~ → superseded by Batch 10 (static frontend build).
   - Collaboration: GitHub PR workflow with Manager access.
+- **Batch 10 (Architecture Change — Frontend-Only, Everything Mocked)**:
+  - No backend, database, ORM, or API server. All six subsystems run in the browser against mock data.
+  - Persistence is limited to the browser (`localStorage`), seeded from fixtures in `src/data`.
 - **Design Reference Mockups (Located in `./Design/` directory)**:
   - **Catalog Page (Browse, Search, Filter & Lists)**: [`Design/CatalogPage.png`](Design/CatalogPage.png)
   - **Product Detail Page (Cover, Summary, Review & Sidebar)**: [`Design/ProductDetailsPage.png`](Design/ProductDetailsPage.png)

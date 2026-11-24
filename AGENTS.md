@@ -4,6 +4,8 @@ This file provides guidance to agents when working with code in this repository.
 
 ## Project Overview
 - Greenfield capstone project repository (`CapstoneProject`) initialized on branch `main`.
+- **Service conventions:** services reject with `ApiError` (see `src/services/mock.ts`) and use `respond()` for latency; React contexts live in a `*.ts` file (context + hook) separate from the `*Provider.tsx` component; load data via promise chains / `useAsync`, not `setState` inside `useEffect`; use the `Notice` atom for errors and `BookArt` for covers (no network images).
+- **Architecture: frontend-only, everything mocked** (see `architecture.md`). Do not add a backend, database, ORM, OpenAPI, Docker or any network calls. Data comes from `bookworm-app/src/data` fixtures and typed async mock services in `bookworm-app/src/services`; mutable state persists in `localStorage`. Keep service signatures API-shaped (Promise-returning) so UI code does not change if a real backend is added later.
 
 ## Build, Lint & Test Commands
 - `bookworm-app/` commands (`npm run build`, `npm run lint`) must run from `bookworm-app/`. `npm` is not on the default shell PATH here; prefix with `export PATH="$HOME/.nvm/versions/node/v22.11.0/bin:$PATH" &&`.

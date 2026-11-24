@@ -1,5 +1,7 @@
 import { CategorySidebar, BookGrid } from '../organisms';
 import { SearchBar, FilterDropdown } from '../molecules';
+import { Notice } from '../atoms';
+import { PageMessage } from './PageMessage';
 import type { Book } from '../../types';
 
 interface CatalogTemplateProps {
@@ -21,6 +23,10 @@ interface CatalogTemplateProps {
   newLaunches: Book[];
   filtered: Book[];
   isFiltered: boolean;
+  /** Genre tag slug from a clicked tag, e.g. "self-help"; empty when none. */
+  genre: string;
+  loading: boolean;
+  error: string | null;
 }
 
 export function CatalogTemplate({
@@ -42,7 +48,14 @@ export function CatalogTemplate({
   newLaunches,
   filtered,
   isFiltered,
+  genre,
+  loading,
+  error,
 }: CatalogTemplateProps) {
+  const genreLabel = genre
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
   return (
     <div className="flex flex-col md:flex-row gap-6 py-4">
       {/* Sidebar */}
@@ -78,7 +91,7 @@ export function CatalogTemplate({
             />
             <FilterDropdown
               label="Price Range"
-              options={['All', 'Under ₹200', '₹200–₹400', 'Above ₹400']}
+              options={['All', 'Under $15', '$15–$25', 'Above $25']}
               value={priceRange}
               onChange={onPriceRangeChange}
               className="min-w-[110px]"
@@ -94,8 +107,15 @@ export function CatalogTemplate({
         </div>
 
         {/* Book sections */}
-        {isFiltered ? (
-          <BookGrid title={`Results for "${searchQuery || selectedCategory}"`} books={filtered} />
+        {error && <Notice kind="error" className="mb-4">{error}</Notice>}
+        {loading ? (
+          <PageMessage loading>Loading books…</PageMessage>
+        ) : isFiltered ? (
+          filtered.length === 0 ? (
+            <Notice kind="info">No books match your search. Try clearing a filter.</Notice>
+          ) : (
+            <BookGrid title={`Results for "${searchQuery || genreLabel || selectedCategory}"`} books={filtered} />
+          )
         ) : (
           <>
             <BookGrid title="Recommended for You" books={recommended} />

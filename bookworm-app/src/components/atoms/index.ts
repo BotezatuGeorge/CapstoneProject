@@ -7,3 +7,5 @@ export { Tag } from './Tag';
 export { PriceDisplay } from './PriceDisplay';
 export { Badge } from './Badge';
 export { Spinner } from './Spinner';
+export { Notice } from './Notice';
+export { BookArt } from './BookArt';

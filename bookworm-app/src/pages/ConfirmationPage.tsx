@@ -1,26 +1,26 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Navbar } from '../components/organisms';
-import { ConfirmationTemplate } from '../components/templates';
-import { books } from '../data';
-import type { CartItem } from '../types';
-
-// Use hardcoded demo items on the confirmation page
-// (cart was cleared after payment)
-const DEMO_ITEMS: CartItem[] = [
-  { book: books[0], quantity: 1 },
-  { book: books[3], quantity: 1 },
-];
+import { ConfirmationTemplate, PageMessage } from '../components/templates';
+import { useAsync } from '../hooks/useAsync';
+import { errorMessage, orderService } from '../services';
 
 export function ConfirmationPage() {
+  const { orderId = '' } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
+  const order = useAsync(() => orderService.getOrder(orderId), [orderId]);
 
   return (
     <div className="flex flex-col min-h-screen bg-surface">
       <Navbar />
-      <ConfirmationTemplate
-        items={DEMO_ITEMS}
-        onContinueShopping={() => navigate('/')}
-      />
+      {order.data ? (
+        <ConfirmationTemplate
+          order={order.data}
+          onContinueShopping={() => navigate('/')}
+          onViewOrders={() => navigate('/orders')}
+        />
+      ) : (
+        <PageMessage loading={order.loading}>{order.error ? errorMessage(order.error) : 'Loading your order…'}</PageMessage>
+      )}
     </div>
   );
 }

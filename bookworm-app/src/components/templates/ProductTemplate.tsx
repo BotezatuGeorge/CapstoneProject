@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
-import { Button, PriceDisplay, StarRating, Tag } from '../atoms';
+import { Button, Notice, PriceDisplay, StarRating, Tag } from '../atoms';
 import { BreadcrumbNav } from '../molecules';
 import { RelatedBookCard } from '../molecules';
 import { AuthorBio, ReviewSection } from '../organisms';
-import { ShoppingCart, Bookmark } from '@carbon/icons-react';
+import { ShoppingCart, Bookmark, BookmarkFilled } from '@carbon/icons-react';
 import type { Book, Author, Review } from '../../types';
 
 interface ProductTemplateProps {
@@ -11,9 +11,13 @@ interface ProductTemplateProps {
   author: Author | undefined;
   relatedBooks: Book[];
   reviews: Review[];
+  inWishlist: boolean;
+  busy: boolean;
+  /** Result of the last cart/wishlist action, shown under the buttons. */
+  feedback: { kind: 'error' | 'success'; message: string } | null;
   onAddToCart: () => void;
-  onAddToWishlist: () => void;
-  onSubmitReview: (text: string, rating: number) => void;
+  onToggleWishlist: () => void;
+  onSubmitReview: (text: string, rating: number) => Promise<void>;
 }
 
 export function ProductTemplate({
@@ -21,10 +25,14 @@ export function ProductTemplate({
   author,
   relatedBooks,
   reviews,
+  inWishlist,
+  busy,
+  feedback,
   onAddToCart,
-  onAddToWishlist,
+  onToggleWishlist,
   onSubmitReview,
 }: ProductTemplateProps) {
+  const outOfStock = book.stock === 0;
   const crumbs = [
     { label: 'Home', href: '/' },
     ...(book.genres[0] ? [{ label: book.genres[0].label, href: `/catalog?genre=${book.genres[0].slug}` }] : []),
@@ -83,6 +91,11 @@ export function ProductTemplate({
                 Delivery by <span className="text-white font-medium">{book.deliveryDate}</span>
               </p>
 
+              {book.stock > 0 && book.stock <= 5 && (
+                <p className="text-xs text-[#f1c21b]">Only {book.stock} left in stock</p>
+              )}
+              {outOfStock && <p className="text-xs text-[#ff8389]">Out of stock</p>}
+
               {/* CTA buttons */}
               <div className="flex flex-wrap gap-3 mt-3">
                 <Button
@@ -90,18 +103,21 @@ export function ProductTemplate({
                   size="md"
                   icon={<ShoppingCart size={16} />}
                   onClick={onAddToCart}
+                  disabled={busy || outOfStock}
                 >
                   Add to Cart
                 </Button>
                 <Button
                   variant="secondary"
                   size="md"
-                  icon={<Bookmark size={16} />}
-                  onClick={onAddToWishlist}
+                  icon={inWishlist ? <BookmarkFilled size={16} /> : <Bookmark size={16} />}
+                  onClick={onToggleWishlist}
+                  disabled={busy}
                 >
-                  Add to Wishlist
+                  {inWishlist ? 'In Wishlist' : 'Add to Wishlist'}
                 </Button>
               </div>
+              {feedback && <Notice kind={feedback.kind} className="mt-2">{feedback.message}</Notice>}
 
               {/* Stats row */}
               <div className="flex flex-wrap gap-6 mt-4 pt-4 border-t border-border">

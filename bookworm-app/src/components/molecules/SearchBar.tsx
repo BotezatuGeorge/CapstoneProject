@@ -25,8 +25,7 @@ export function SearchBar({ placeholder = 'Search', onSearch, className }: Searc
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-surface-overlay border border-border px-4 py-2 text-sm text-white placeholder-muted pr-10
-                   focus:outline-none focus:ring-1 focus:ring-accent-blue transition"
+        className="input-base pr-10"
       />
       <button
         type="submit"

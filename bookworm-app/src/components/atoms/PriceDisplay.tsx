@@ -1,8 +1,8 @@
 import clsx from 'clsx';
+import { formatMoney } from '../../lib/money';
 
 interface PriceDisplayProps {
   amount: number;
-  currency?: string;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
@@ -15,13 +15,12 @@ const sizeMap = {
 
 export function PriceDisplay({
   amount,
-  currency = '₹',
   size = 'md',
   className,
 }: PriceDisplayProps) {
   return (
     <span className={clsx('text-white', sizeMap[size], className)}>
-      {currency}{amount.toLocaleString('en-IN')}
+      {formatMoney(amount)}
     </span>
   );
 }

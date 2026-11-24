@@ -4,3 +4,7 @@ export { ProductTemplate } from './ProductTemplate';
 export { CartTemplate } from './CartTemplate';
 export { PaymentTemplate } from './PaymentTemplate';
 export { ConfirmationTemplate } from './ConfirmationTemplate';
+export { PageMessage } from './PageMessage';
+export { OrdersTemplate } from './OrdersTemplate';
+export { WishlistTemplate } from './WishlistTemplate';
+export { WritersTemplate } from './WritersTemplate';

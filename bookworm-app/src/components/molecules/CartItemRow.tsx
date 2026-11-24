@@ -1,14 +1,15 @@
 import { Link } from 'react-router-dom';
-import { Tag, PriceDisplay } from '../atoms';
+import { Tag, PriceDisplay, Notice } from '../atoms';
 import { QuantitySelector } from './QuantitySelector';
 import type { CartItem } from '../../types';
 
 interface CartItemRowProps {
   item: CartItem;
   onQuantityChange: (bookId: string, qty: number) => void;
+  onRemove: (bookId: string) => void;
 }
 
-export function CartItemRow({ item, onQuantityChange }: CartItemRowProps) {
+export function CartItemRow({ item, onQuantityChange, onRemove }: CartItemRowProps) {
   const { book, quantity } = item;
   return (
     <div className="flex gap-4 p-4">
@@ -35,11 +36,12 @@ export function CartItemRow({ item, onQuantityChange }: CartItemRowProps) {
         <p className="text-xs text-muted">
           Delivery by <span className="text-white font-medium">{book.deliveryDate}</span>
         </p>
-        <div className="mt-2">
-          <QuantitySelector
-            value={quantity}
-            onChange={(q) => onQuantityChange(book.id, q)}
-          />
+        {book.stock <= 5 && <Notice kind="warning">Only {book.stock} left in stock</Notice>}
+        <div className="mt-2 flex items-center gap-4">
+          <QuantitySelector value={quantity} max={Math.max(1, book.stock)} onChange={(q) => onQuantityChange(book.id, q)} />
+          <button type="button" onClick={() => onRemove(book.id)} className="text-sm text-link hover:underline">
+            Remove
+          </button>
         </div>
       </div>
     </div>
