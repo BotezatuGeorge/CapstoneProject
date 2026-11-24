@@ -369,13 +369,15 @@ erDiagram
 - [x] Configure Member subsystem mock: Persona Switcher, Guest session handling, and Role/Entitlements.
 
 > **Implementation layout:** fixtures in `src/data`; Promise-returning services (`ApiError` on failure, simulated latency, `localStorage` persistence) in `src/services`; `SessionProvider` / `CartProvider` in `src/context`; `useAsync` in `src/hooks`.
-> **Demo values (currency: USD):** personas `guest`, `aarav` (wallet $100, 320 points, seeded orders), `priya` (wallet $5); coupons `BOOKWORM10` ($10 off, min $30), `WELCOME10` (10%), `READ5` ($5 off, min $20); card numbers are not validated (any number is approved; one ending in `0002` is declined), UPI ids starting with `fail` declined; `lost-kitten` has stock 3. Gift points: 1 per $10 spent. Adding to cart keeps the user on the current page and shows a success notice.
+> **Demo values (currency: USD):** personas `guest`, `aarav` (wallet $100, 320 points, seeded orders), `priya` (wallet $5); coupons `BOOKWORM10` ($10 off, min $30), `WELCOME10` (10%), `READ5` ($5 off, min $20); card numbers are not validated (any number is approved; one ending in `0002` is declined), UPI ids starting with `fail` declined; `lost-kitten` has stock 3. Gift points: earned at 1 per $10 actually paid; redeemable at checkout (rules below). Adding to cart keeps the user on the current page and shows a success notice.
+> **Gift points rules:** 1 point = $0.10 (`storePolicy.pointValue`); points may cover at most 50% of the amount payable after the coupon (`storePolicy.maxPointsCoverage`), in whole points; registered customers only (guests are asked to sign in). The request is stored on the cart (`pointsToRedeem`) and capped by the balance and the policy on every quote, so it shrinks if the cart gets cheaper. Points are spent only when the order is placed (net `earned − redeemed`); cancelling or returning an order restores the redeemed points and reverses the earned ones; a declined payment leaves balance and request untouched. The `localStorage` prefix is `bookworm:v3:` (older data is discarded).
+> **Known gaps (not built, by decision):** UPI QR code, express shipping choice at checkout, Audiobook / Newest / extra-language filters, search auto-complete, role-based entitlements (personas only differ by data), up-sell suggestions, return shipment tracking. `@carbon/react` and Zustand from the original stack are not used (Tailwind + hand-built Carbon-styled components + React Context).
 
 ### Phase 2: Store & Catalog Subsystems (Discovery & Recommendations)
-- [ ] Seed mock catalog fixtures (`src/data`) with books shown in design (e.g., *Joy of Minimalism*, *The Art of Focus*, *The Art of Learning*, *The Path to Success*, etc.) and authors (e.g. Daniel Reed, Arjun Patel, Raj Patel, James Wright).
-- [ ] Implement Category Sidebar (20+ genres) and Filter Bar (Language, Format, Price Range, Sort).
-- [ ] Implement Home Sections: "Recommended for You", "Bestsellers this Month", and "New Launches".
-- [ ] Build Product Detail Page (PDP):
+- [x] Seed mock catalog fixtures (`src/data`) with books shown in design (e.g., *Joy of Minimalism*, *The Art of Focus*, *The Art of Learning*, *The Path to Success*, etc.) and authors (e.g. Daniel Reed, Arjun Patel, Raj Patel, James Wright).
+- [x] Implement Category Sidebar (20+ genres) and Filter Bar (Language, Format, Price Range, Sort).
+- [x] Implement Home Sections: "Recommended for You", "Bestsellers this Month", and "New Launches".
+- [x] Build Product Detail Page (PDP):
   - Cover gallery with Front and Back Cover views.
   - Book metadata (Language, Rating, Sales count counter).
   - Tentative Delivery Date calculator (Shipping Subsystem integration).
@@ -383,20 +385,20 @@ erDiagram
   - "Related Reads" cross-sell sidebar.
 
 ### Phase 3: Order Subsystem, Basket & Wishlist
-- [ ] Top navigation with live cart badge counter and links (`My Orders`, `My Wishlist`, `My Writers`).
-- [ ] Persistent shopping basket for both Guest and Registered users (Add to Cart from PDP and Feed).
-- [ ] Wishlist toggle ("Add to Wishlist" action).
-- [ ] Quantity stepper controls (`+` / `-`) with live subtotal updates.
-- [ ] Order History list with order details, item breakdown, and status badges.
-- [ ] "Buy It Again" 1-click basket population logic from Order History.
+- [x] Top navigation with live cart badge counter and links (`My Orders`, `My Wishlist`, `My Writers`).
+- [x] Persistent shopping basket for both Guest and Registered users (Add to Cart from PDP and Feed).
+- [x] Wishlist toggle ("Add to Wishlist" action).
+- [x] Quantity stepper controls (`+` / `-`) with live subtotal updates.
+- [x] Order History list with order details, item breakdown, and status badges.
+- [x] "Buy It Again" 1-click basket population logic from Order History.
 
 ### Phase 4: Checkout, Coupons, Gift Points & Payment Subsystem
-- [ ] Multi-step checkout UI:
+- [x] Multi-step checkout UI:
   - Shopping cart review panel with live quantity adjustments.
   - Delivery address form (First/Last name, Address line, Email, City, Pin, Phone with +91, State, Country) + Saved Address toggle.
   - Grand total card with breakdown (`Price`, `Tax`, `Delivery Charges`, `Discount`, `Total Amount`).
   - Coupon & Gift Points redemption engine with instant `Apply` calculation.
-- [ ] Complete Payment Screen / Modal dialog:
+- [x] Complete Payment Screen / Modal dialog:
   - Tabbed payment method selector (`Credit Card`, `Debit card`, `UPI`, `Wallet`).
   - Card detail inputs (`Card Number`, `Name on Card`, `CVV`, `Date of Expiry`).
   - Payment gateway transaction processing via "Pay Now" trigger.
@@ -404,14 +406,17 @@ erDiagram
   - Post-purchase cart clearance and order persistence.
 
 ### Phase 5: Shipping, 48-Hour Order Cancellation & Returns
-- [ ] Shipping subsystem: Rate calculation engine & approximate delivery timeline.
-- [ ] 48-Hour Order Cancellation Engine:
+- [x] Shipping subsystem: Rate calculation engine & approximate delivery timeline.
+- [x] 48-Hour Order Cancellation Engine:
   - Strict validation (`now <= placedAt + 48 hours` and not shipped).
   - Automatic inventory release, payment refund processing, and points reversal.
   - Order History cancellation action with remaining time display.
-- [ ] Return Order workflow: Return shipment tracking and refund settlement.
+- [x] Return Order workflow: refund settlement and points reversal (return shipment tracking is not built).
 
 ### Phase 6: AI-Augmented Testing (ICA Agents) & Verification
+- [x] Unit tests for every atom, molecule and organism (`src/components/{atoms,molecules,organisms}/*.test.tsx`) and `src/lib/money.ts`, using Vitest + Testing Library + happy-dom; shared builders in `src/test/fixtures.ts` and `src/test/providers.tsx` (router + session + cart contexts). Run with `npm test` (single file: `npm test -- Button`, single test: `npm test -- -t "calls onClick"`); coverage with `npm run test:coverage` (v8 provider; text table plus HTML report in `bookworm-app/coverage/`). Atoms, molecules and organisms are at 100% statements/branches/functions/lines. Test files are colocated with the component. `happy-dom` is used instead of `jsdom` because jsdom 27 needs Node 22.12+.
+- [x] Service tests for pricing (`pricing.test.ts`) and gift points redemption (`points.test.ts`): caps, guest/balance/validation errors, placement, cancel and return. 298 tests in 30 files pass; overall coverage 46% statements / 45% branches / 48% functions / 50% lines (`src/services` ~52%, `pricing.ts` 100%).
+- [ ] Remaining untested layers: templates, pages, `src/context` providers, `src/hooks`, and the catalog, member, review, wishlist and order services.
 - [ ] Generate comprehensive test scenarios using **ICA Test Scenario Generator**:
   - End-to-End user journeys: Guest / Registered browsing, checkout, points redemption, 48-hour cancellation.
 - [ ] Generate service-layer tests using **ICA API Testcase Generator**:
