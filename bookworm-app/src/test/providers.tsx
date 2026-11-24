@@ -19,6 +19,8 @@ export function makeCartContext(overrides: Partial<CartContextValue> = {}): Cart
     removeFromCart: vi.fn().mockResolvedValue(undefined),
     applyCoupon: vi.fn().mockResolvedValue(undefined),
     removeCoupon: vi.fn().mockResolvedValue(undefined),
+    redeemPoints: vi.fn().mockResolvedValue(undefined),
+    removePoints: vi.fn().mockResolvedValue(undefined),
     refresh: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };

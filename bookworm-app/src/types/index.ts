@@ -103,7 +103,12 @@ export interface Quote {
   subtotal: number;
   tax: number;
   shipping: number;
+  /** Coupon discount. */
   discount: number;
+  /** Gift points actually applied (requested points capped by balance and by the store policy). */
+  pointsRedeemed: number;
+  /** Dollar value of `pointsRedeemed`. */
+  pointsDiscount: number;
   total: number;
   /** False when a coupon is attached but the order is below its minimum. */
   couponApplied: boolean;
@@ -167,6 +172,9 @@ export interface Order {
   discountAmount: number;
   totalAmount: number;
   couponCode?: string;
+  pointsRedeemed: number;
+  /** Dollar value of the redeemed points, already deducted from `totalAmount`. */
+  pointsDiscount: number;
   pointsEarned: number;
   payment: PaymentTransaction;
   shipment: Shipment;

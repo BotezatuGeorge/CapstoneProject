@@ -2,6 +2,7 @@ import { formatMoney, roundMoney } from '../lib/money';
 import type { CartItem, CartSnapshot } from '../types';
 import {
   findCoupon,
+  getUser,
   getBookById,
   getBooks,
   getCheckoutAddress,
@@ -11,7 +12,7 @@ import {
 } from './db';
 import { currentUser } from './member';
 import { ApiError, LATENCY, respond } from './mock';
-import { computeQuote } from './pricing';
+import { computeQuote, maxRedeemablePoints } from './pricing';
 import { validateAddress } from './validation';
 import type { Address } from '../types';
 
@@ -24,7 +25,8 @@ export function buildSnapshot(userId: string): CartSnapshot {
     return book ? [{ book, quantity: line.quantity }] : [];
   });
   const coupon = stored.couponCode ? findCoupon(stored.couponCode) : null;
-  return { items, coupon, quote: computeQuote(items, coupon) };
+  const balance = getUser(userId)?.giftPoints ?? 0;
+  return { items, coupon, quote: computeQuote(items, coupon, Math.min(stored.pointsToRedeem, balance)) };
 }
 
 function assertStock(bookId: string, quantity: number): void {
@@ -92,6 +94,35 @@ export const cartService = {
     respond(LATENCY.cart, () => {
       const userId = currentUser().id;
       saveStoredCart(userId, { ...getStoredCart(userId), couponCode: null });
+      return buildSnapshot(userId);
+    }),
+
+  /** Redeems gift points against the payable amount (after any coupon), within balance and store policy. */
+  redeemPoints: (points: number): Promise<CartSnapshot> =>
+    respond(LATENCY.write, () => {
+      const user = currentUser();
+      if (user.role === 'GUEST') throw new ApiError('FORBIDDEN', 'Sign in as a customer to redeem gift points');
+      const snapshot = buildSnapshot(user.id);
+      if (snapshot.items.length === 0) throw new ApiError('EMPTY_CART', 'Your cart is empty');
+      if (!Number.isInteger(points) || points < 1) {
+        throw new ApiError('VALIDATION', 'Enter a whole number of gift points (1 or more)');
+      }
+      if (points > user.giftPoints) {
+        throw new ApiError('VALIDATION', `You only have ${user.giftPoints} gift points`);
+      }
+      const payable = roundMoney(snapshot.quote.total + snapshot.quote.pointsDiscount);
+      const max = maxRedeemablePoints(payable);
+      if (points > max) {
+        throw new ApiError('VALIDATION', `You can redeem at most ${max} gift points on this order`);
+      }
+      saveStoredCart(user.id, { ...getStoredCart(user.id), pointsToRedeem: points });
+      return buildSnapshot(user.id);
+    }),
+
+  removePoints: (): Promise<CartSnapshot> =>
+    respond(LATENCY.cart, () => {
+      const userId = currentUser().id;
+      saveStoredCart(userId, { ...getStoredCart(userId), pointsToRedeem: 0 });
       return buildSnapshot(userId);
     }),
 

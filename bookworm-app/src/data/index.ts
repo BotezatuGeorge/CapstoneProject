@@ -13,6 +13,10 @@ export const storePolicy = {
   expressShippingFee: 5,
   /** Gift points earned per $10 spent. */
   pointsPerTenDollars: 1,
+  /** Dollar value of one gift point when redeemed at checkout. */
+  pointValue: 0.1,
+  /** Largest share of the payable amount (after coupon) that gift points may cover, so a card/UPI/wallet charge always remains. */
+  maxPointsCoverage: 0.5,
 } as const;
 
 /* ------------------------------------------------------------------ */

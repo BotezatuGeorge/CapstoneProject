@@ -9,7 +9,17 @@ import { useSession } from './session';
 const EMPTY: CartSnapshot = {
   items: [],
   coupon: null,
-  quote: { itemCount: 0, subtotal: 0, tax: 0, shipping: 0, discount: 0, total: 0, couponApplied: false },
+  quote: {
+    itemCount: 0,
+    subtotal: 0,
+    tax: 0,
+    shipping: 0,
+    discount: 0,
+    pointsRedeemed: 0,
+    pointsDiscount: 0,
+    total: 0,
+    couponApplied: false,
+  },
 };
 
 /** The cart belongs to the signed-in persona, so the store (and the pages under it) remount on persona change. */
@@ -60,6 +70,8 @@ function CartStore({ children }: { children: ReactNode }) {
       removeFromCart: (bookId) => run(cartService.removeItem(bookId)),
       applyCoupon: (code) => run(cartService.applyCoupon(code)),
       removeCoupon: () => run(cartService.removeCoupon()),
+      redeemPoints: (points) => run(cartService.redeemPoints(points)),
+      removePoints: () => run(cartService.removePoints()),
       refresh: () => run(cartService.get()),
     }),
     [snapshot, loaded, pending, run]

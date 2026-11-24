@@ -54,6 +54,8 @@ export function buildSeedOrders(now: Date): Order[] {
       taxAmount: quote.tax,
       shippingFee: quote.shipping,
       discountAmount: 0,
+      pointsRedeemed: 0,
+      pointsDiscount: 0,
       totalAmount: quote.total,
       pointsEarned: Math.floor(quote.total / 10) * storePolicy.pointsPerTenDollars,
       payment: {

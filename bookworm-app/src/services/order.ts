@@ -3,6 +3,7 @@ import type { Address, Order, OrderView, PaymentRequest } from '../types';
 import { buildSnapshot } from './cart';
 import {
   adjustStock,
+  emptyCart,
   getBookById,
   getCheckoutAddress,
   getOrders,
@@ -41,7 +42,7 @@ function replaceOrder(orders: Order[], updated: Order): void {
   saveOrders(orders.map((o) => (o.id === updated.id ? updated : o)));
 }
 
-/** Gift points are credited at 1 per $10 and reversed on cancellation or return. */
+/** Gift points: earned at 1 per $10, spent at checkout; both are reversed on cancellation or return. */
 function adjustPoints(userId: string, delta: number): void {
   const user = getUser(userId);
   if (user) saveUser({ ...user, giftPoints: Math.max(0, user.giftPoints + delta) });
@@ -83,6 +84,8 @@ export const orderService = {
         discountAmount: snapshot.quote.discount,
         totalAmount: snapshot.quote.total,
         couponCode: snapshot.quote.couponApplied ? snapshot.coupon?.code : undefined,
+        pointsRedeemed: snapshot.quote.pointsRedeemed,
+        pointsDiscount: snapshot.quote.pointsDiscount,
         pointsEarned: Math.floor(snapshot.quote.total / 10) * storePolicy.pointsPerTenDollars,
         payment: transaction,
         shipment: createShipment('STANDARD', extraDays, now),
@@ -93,9 +96,9 @@ export const orderService = {
 
       saveOrders([order, ...getOrders(now)]);
       snapshot.items.forEach(({ book, quantity }) => adjustStock(book.id, -quantity, quantity));
-      saveStoredCart(user.id, { lines: [], couponCode: null });
+      saveStoredCart(user.id, emptyCart());
       saveCheckoutAddress(user.id, null);
-      adjustPoints(user.id, order.pointsEarned);
+      adjustPoints(user.id, order.pointsEarned - order.pointsRedeemed);
       return toView(order, now);
     }),
 
@@ -132,7 +135,7 @@ export const orderService = {
       const updated: Order = { ...order, status: 'CANCELLED', payment: refundPayment(order.payment, order.userId) };
       replaceOrder(orders, updated);
       order.items.forEach(({ book, quantity }) => adjustStock(book.id, quantity, -quantity));
-      adjustPoints(order.userId, -order.pointsEarned);
+      adjustPoints(order.userId, order.pointsRedeemed - order.pointsEarned);
       return toView(updated, now);
     }),
 
@@ -154,7 +157,7 @@ export const orderService = {
       };
       replaceOrder(orders, updated);
       order.items.forEach(({ book, quantity }) => adjustStock(book.id, quantity, -quantity));
-      adjustPoints(order.userId, -order.pointsEarned);
+      adjustPoints(order.userId, order.pointsRedeemed - order.pointsEarned);
       return toView(updated, now);
     }),
 

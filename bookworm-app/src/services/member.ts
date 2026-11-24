@@ -1,5 +1,5 @@
 import type { User } from '../types';
-import { getStoredCart, getUser, getUsers, saveStoredCart } from './db';
+import { emptyCart, getStoredCart, getUser, getUsers, saveStoredCart } from './db';
 import { LATENCY, respond } from './mock';
 import { GUEST_ID, getSessionUserId, setSessionUserId } from './session';
 import { resetStore } from './storage';
@@ -22,7 +22,7 @@ function mergeGuestCart(targetUserId: string): void {
     else target.lines.push({ ...line });
   }
   saveStoredCart(targetUserId, target);
-  saveStoredCart(GUEST_ID, { lines: [], couponCode: null });
+  saveStoredCart(GUEST_ID, emptyCart());
 }
 
 export const memberService = {

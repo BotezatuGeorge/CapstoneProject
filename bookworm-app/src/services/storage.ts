@@ -1,4 +1,4 @@
-const PREFIX = 'bookworm:v2:';
+const PREFIX = 'bookworm:v3:';
 
 export function readStore<T>(key: string, fallback: T): T {
   const raw = localStorage.getItem(PREFIX + key);

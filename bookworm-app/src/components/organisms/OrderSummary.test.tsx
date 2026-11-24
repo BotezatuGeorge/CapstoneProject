@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../services';
 import { makeCoupon, makeQuote } from '../../test/fixtures';
-import { makeCartContext, renderWithProviders } from '../../test/providers';
+import { GUEST, makeCartContext, makeSessionContext, renderWithProviders } from '../../test/providers';
 import { OrderSummary } from './OrderSummary';
 
 const renderSummary = (cart = makeCartContext(), props: Partial<React.ComponentProps<typeof OrderSummary>> = {}) =>
@@ -145,4 +145,109 @@ describe('OrderSummary', () => {
       expect(screen.getByRole('button', { name: /Checking…/ })).toBeDisabled();
     });
   });
+
+  describe('gift points', () => {
+    const redeemInput = () => screen.getByLabelText('Gift points to redeem');
+    const redeemButton = () => screen.getByRole('button', { name: 'Redeem' });
+
+    it('shows the balance and the value of a point', () => {
+      renderSummary();
+      expect(screen.getByText('You have 320 points · 1 point = $0.10')).toBeInTheDocument();
+    });
+
+    it('asks a guest to sign in instead of showing the field', () => {
+      renderWithProviders(<OrderSummary onPayNow={() => {}} />, { session: makeSessionContext({ user: GUEST }) });
+      expect(screen.getByText('Sign in as a customer to redeem gift points.')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Gift points to redeem')).toBeNull();
+    });
+
+    it('keeps Redeem disabled until points are typed', async () => {
+      renderSummary();
+      expect(redeemButton()).toBeDisabled();
+      await userEvent.type(redeemInput(), '50');
+      expect(redeemButton()).toBeEnabled();
+    });
+
+    it('accepts digits only', async () => {
+      renderSummary();
+      await userEvent.type(redeemInput(), '1a2.5');
+      expect(redeemInput()).toHaveValue('125');
+    });
+
+    it('is disabled for an empty cart', async () => {
+      renderSummary(makeCartContext({ quote: makeQuote({ itemCount: 0 }) }));
+      await userEvent.type(redeemInput(), '50');
+      expect(redeemButton()).toBeDisabled();
+    });
+
+    it('is disabled while the cart is busy', async () => {
+      renderSummary(makeCartContext({ busy: true }));
+      await userEvent.type(redeemInput(), '50');
+      expect(redeemButton()).toBeDisabled();
+    });
+
+    it('redeems the typed number of points and clears the field', async () => {
+      const redeemPoints = vi.fn().mockResolvedValue(undefined);
+      renderSummary(makeCartContext({ redeemPoints }));
+      await userEvent.type(redeemInput(), '100');
+      await userEvent.click(redeemButton());
+      expect(redeemPoints).toHaveBeenCalledWith(100);
+      expect(redeemInput()).toHaveValue('');
+    });
+
+    it('shows the service error and keeps the number when it is refused', async () => {
+      const redeemPoints = vi
+        .fn()
+        .mockRejectedValue(new ApiError('VALIDATION', 'You can redeem at most 145 gift points on this order'));
+      renderSummary(makeCartContext({ redeemPoints }));
+      await userEvent.type(redeemInput(), '999');
+      await userEvent.click(redeemButton());
+      expect(await screen.findByRole('alert')).toHaveTextContent('at most 145 gift points');
+      expect(redeemInput()).toHaveValue('999');
+    });
+
+    it('clears an earlier error on the next attempt', async () => {
+      const redeemPoints = vi
+        .fn()
+        .mockRejectedValueOnce(new ApiError('VALIDATION', 'Too many'))
+        .mockResolvedValueOnce(undefined);
+      renderSummary(makeCartContext({ redeemPoints }));
+      await userEvent.type(redeemInput(), '999');
+      await userEvent.click(redeemButton());
+      await screen.findByRole('alert');
+      await userEvent.click(redeemButton());
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    describe('once applied', () => {
+      const applied = (removePoints = vi.fn().mockResolvedValue(undefined)) =>
+        renderSummary(
+          makeCartContext({
+            quote: makeQuote({ pointsRedeemed: 100, pointsDiscount: 10, total: 19.1 }),
+            removePoints,
+          })
+        );
+
+      it('replaces the field with a confirmation and a Remove action', async () => {
+        const removePoints = vi.fn().mockResolvedValue(undefined);
+        applied(removePoints);
+        expect(screen.getByText('100 gift points applied')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Gift points to redeem')).toBeNull();
+        await userEvent.click(screen.getByRole('button', { name: 'Remove gift points' }));
+        expect(removePoints).toHaveBeenCalledTimes(1);
+      });
+
+      it('shows the deduction as its own line', () => {
+        applied();
+        expect(screen.getByText('Gift points').nextSibling).toHaveTextContent('−$10.00');
+        expect(screen.getByText('$19.10')).toBeInTheDocument();
+      });
+    });
+
+    it('hides the deduction line when no points are used', () => {
+      renderSummary();
+      expect(screen.queryByText('Gift points')).toBeNull();
+    });
+  });
+
 });

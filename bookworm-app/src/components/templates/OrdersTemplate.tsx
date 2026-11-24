@@ -75,7 +75,13 @@ export function OrdersTemplate({ orders, isGuest, busyOrderId, feedback, onCance
                 </ul>
 
                 <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-surface-overlay p-3">
-                  <div><dt className="text-helper">Total</dt><dd className="text-white font-semibold">{money(order.totalAmount)}</dd></div>
+                  <div>
+                    <dt className="text-helper">Total</dt>
+                    <dd className="text-white font-semibold">{money(order.totalAmount)}</dd>
+                    {order.pointsRedeemed > 0 && (
+                      <dd className="text-muted">{order.pointsRedeemed} points used</dd>
+                    )}
+                  </div>
                   <div><dt className="text-helper">Payment</dt><dd className="text-white">{order.payment.status}</dd></div>
                   <div><dt className="text-helper">Tracking</dt><dd className="text-white">{order.shipment.trackingNumber}</dd></div>
                   <div>

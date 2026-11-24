@@ -16,6 +16,9 @@ export interface CartContextValue {
   removeFromCart: (bookId: string) => Promise<void>;
   applyCoupon: (code: string) => Promise<void>;
   removeCoupon: () => Promise<void>;
+  /** Spends gift points on the order; rejects when over the balance or the store-policy cap. */
+  redeemPoints: (points: number) => Promise<void>;
+  removePoints: () => Promise<void>;
   /** Re-reads the cart after something outside the context changed it (checkout, buy again). */
   refresh: () => Promise<void>;
 }

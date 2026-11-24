@@ -60,6 +60,8 @@ export function makeQuote(overrides: Partial<Quote> = {}): Quote {
     tax: 3.12,
     shipping: 0,
     discount: 0,
+    pointsRedeemed: 0,
+    pointsDiscount: 0,
     total: 29.1,
     couponApplied: false,
     ...overrides,

@@ -69,12 +69,17 @@ export function getBookById(bookId: string, now: Date = new Date()): Book | unde
 export interface StoredCart {
   lines: { bookId: string; quantity: number }[];
   couponCode: string | null;
+  /** Gift points the user asked to redeem; the quote caps it by balance and store policy. */
+  pointsToRedeem: number;
 }
 
-const EMPTY_CART: StoredCart = { lines: [], couponCode: null };
+/** A fresh object every time: callers mutate the returned cart, so a shared fallback would leak between users. */
+export function emptyCart(): StoredCart {
+  return { lines: [], couponCode: null, pointsToRedeem: 0 };
+}
 
 export function getStoredCart(userId: string): StoredCart {
-  return readStore<StoredCart>(`cart:${userId}`, EMPTY_CART);
+  return readStore<StoredCart>(`cart:${userId}`, emptyCart());
 }
 
 export function saveStoredCart(userId: string, cart: StoredCart): void {

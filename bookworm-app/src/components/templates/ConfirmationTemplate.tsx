@@ -42,6 +42,9 @@ export function ConfirmationTemplate({ order, onContinueShopping, onViewOrders }
             <div className="flex justify-between gap-4"><dt className="text-muted">Order</dt><dd className="text-white">{order.id}</dd></div>
             <div className="flex justify-between gap-4"><dt className="text-muted">Total paid</dt><dd className="text-white font-semibold">{formatMoney(order.totalAmount)}</dd></div>
             <div className="flex justify-between gap-4"><dt className="text-muted">Payment ref</dt><dd className="text-white">{order.payment.transactionRef}</dd></div>
+            {order.pointsRedeemed > 0 && (
+              <div className="flex justify-between gap-4"><dt className="text-muted">Gift points used</dt><dd className="text-white">−{order.pointsRedeemed} ({formatMoney(order.pointsDiscount)})</dd></div>
+            )}
             <div className="flex justify-between gap-4"><dt className="text-muted">Gift points earned</dt><dd className="text-white">+{order.pointsEarned}</dd></div>
             <div className="flex justify-between gap-4"><dt className="text-muted">Tracking</dt><dd className="text-white">{order.shipment.trackingNumber}</dd></div>
             <div className="flex justify-between gap-4"><dt className="text-muted">Free cancellation until</dt><dd className="text-white">{formatDate(order.cancellationDeadline)}</dd></div>
